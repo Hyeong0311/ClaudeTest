@@ -1,0 +1,130 @@
+# main 브랜치에 push되면 EC2에 자동 배포한다.
+#
+#   GitHub Actions ──(OIDC, 키 저장 없음)──> AWS IAM 역할
+#                 ──(SSM Run Command)──────> EC2: 코드 동기화 → scripts/deploy.sh
+#                 ──(HTTP 요청)────────────> 배포된 주소 헬스체크
+#
+# 필요한 설정(저장소 Settings → Secrets and variables → Actions → Variables)은 docs/deploy.md 참고.
+# AWS_ROLE_ARN, EC2_INSTANCE_ID 가 설정되기 전에는 이 작업이 건너뛰어진다.
+name: Deploy to EC2
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write # GitHub → AWS OIDC 로그인에 필요
+  contents: read
+
+# 배포가 겹치지 않도록 한 번에 하나씩 순서대로 실행
+concurrency:
+  group: deploy-ec2
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-northeast-2' }}
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    if: ${{ vars.AWS_ROLE_ARN != '' && vars.EC2_INSTANCE_ID != '' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: AWS 로그인 (OIDC)
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: gh-deploy-${{ github.run_id }}
+          mask-aws-account-id: true
+
+      - name: EC2에 배포 명령 실행 (SSM)
+        env:
+          INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+          APP_DIR: /opt/${{ github.event.repository.name }}
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}.git
+        run: |
+          set -euo pipefail
+
+          # EC2에서 실행할 명령: 이 커밋(GITHUB_SHA)으로 코드를 맞춘 뒤 deploy.sh 실행
+          {
+            echo "set -eu"
+            echo "export HOME=/root"
+            echo "APP_DIR='${APP_DIR}'"
+            echo "REPO_URL='${REPO_URL}'"
+            echo "SHA='${GITHUB_SHA}'"
+            cat <<'EOF'
+          command -v git >/dev/null 2>&1 || dnf install -y -q git
+          if [ ! -d "$APP_DIR/.git" ]; then
+            mkdir -p "$APP_DIR"
+            git -C "$APP_DIR" init -q
+            git -C "$APP_DIR" remote add origin "$REPO_URL"
+          fi
+          git -C "$APP_DIR" fetch -q --depth 1 origin "$SHA"
+          git -C "$APP_DIR" reset -q --hard FETCH_HEAD
+          bash "$APP_DIR/scripts/deploy.sh"
+          EOF
+          } > remote.sh
+
+          jq -n --rawfile script remote.sh \
+            '{commands: ($script | rtrimstr("\n") | split("\n")), executionTimeout: ["1800"]}' > params.json
+
+          if ! CMD_ID=$(aws ssm send-command \
+                --instance-ids "$INSTANCE_ID" \
+                --document-name AWS-RunShellScript \
+                --comment "GitHub Actions deploy ${GITHUB_SHA::7}" \
+                --parameters file://params.json \
+                --query Command.CommandId --output text); then
+            echo "::error::SSM 명령 전송 실패. EC2가 Systems Manager 관리형 노드로 등록됐는지, 배포 역할 권한이 맞는지 확인하세요 (docs/deploy.md 문제 해결)."
+            exit 1
+          fi
+          echo "SSM 명령 ID: $CMD_ID"
+
+          # 최대 30분 동안 10초 간격으로 결과 확인
+          status=Pending
+          for i in $(seq 1 180); do
+            sleep 10
+            status=$(aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+                       --query Status --output text 2>/dev/null || echo Pending)
+            case "$status" in
+              Pending|InProgress|Delayed) echo "[$((i * 10))s] $status" ;;
+              *) break ;;
+            esac
+          done
+
+          echo "::group::EC2 출력 (stdout)"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent --output text || true
+          echo "::endgroup::"
+          echo "::group::EC2 출력 (stderr)"
+          aws ssm get-command-invocation --command-id "$CMD_ID" --instance-id "$INSTANCE_ID" \
+            --query StandardErrorContent --output text || true
+          echo "::endgroup::"
+
+          if [ "$status" != "Success" ]; then
+            echo "::error::EC2 배포 명령 실패 (상태: $status). 위 EC2 출력에서 원인을 확인하세요."
+            exit 1
+          fi
+
+      - name: 헬스체크
+        # APP_URL이 설정되어 있고, 실행할 compose 파일이 있을 때만
+        if: ${{ vars.APP_URL != '' && hashFiles('compose.yaml', 'compose.yml', 'docker-compose.yaml', 'docker-compose.yml') != '' }}
+        env:
+          URL: ${{ vars.APP_URL }}${{ vars.HEALTH_PATH || '/' }}
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 "$URL" || true)
+            echo "[$i/30] $URL → $code"
+            if [ "$code" = "200" ]; then
+              echo "배포 확인 완료"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::헬스체크 실패: $URL 이 200을 반환하지 않습니다. ALB 대상 그룹 상태와 보안그룹을 확인하세요."
+          exit 1

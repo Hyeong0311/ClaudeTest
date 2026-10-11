@@ -1,0 +1,17 @@
+# 비밀값 (절대 커밋하지 않음)
+.env
+.env.*
+!.env.example
+
+# 의존성 · 빌드 결과
+node_modules/
+dist/
+build/
+__pycache__/
+*.pyc
+.venv/
+
+# OS / 에디터
+.DS_Store
+.idea/
+.vscode/
