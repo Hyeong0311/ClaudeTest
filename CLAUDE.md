@@ -2,6 +2,16 @@
 
 Claude Code로 개발하고, `main`에 push하면 AWS EC2에 자동 배포되는 실습 저장소.
 
+## 현재 프로젝트: 방문 출입 관리 프로토타입
+
+- 화면: `/` 방문 신청, `/status` 신청 조회, `/desk` 안내데스크 (README 참고)
+- frontend: React + Vite (JS), 라우팅은 `src/router.jsx`의 간단한 pathname 방식, nginx가 빌드 결과 서빙 + `/api` 프록시
+- backend: FastAPI + SQLAlchemy, 시작 시 테이블 자동 생성(마이그레이션 도구 없음), 비어 있으면 가상 시연 데이터 입력
+- db: PostgreSQL 16
+- 날짜 기준은 한국 시간(Asia/Seoul). 방문일은 DATE, 입·퇴실 시각은 timestamptz
+- 화면 문구는 한국어, 데이터는 가상 이름·가상 회사만 사용
+- 로그인·권한은 아직 없음 (다음 단계 후보)
+
 ## 배포 구조 (수정 요청이 없으면 건드리지 않음)
 
 - `main`에 push → `.github/workflows/deploy.yml` 실행

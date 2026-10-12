@@ -1,0 +1,54 @@
+# 방문 출입 관리 프로토타입: EC2 한 대에서 frontend(nginx) · backend(FastAPI) · db(PostgreSQL)를 함께 띄운다.
+# 외부(ALB)에 열리는 포트는 frontend의 80번 하나뿐이고, backend와 db는 내부 네트워크로만 통신한다.
+name: claudetest
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_USER: app
+      # DB는 외부에 열지 않는다. 실제 비밀번호는 EC2의 /opt/ClaudeTest/.env 에 DB_PASSWORD 로 지정할 수 있다.
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-visitor-demo}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://app:${DB_PASSWORD:-visitor-demo}@db:5432/app
+      APP_VERSION: ${APP_VERSION:-dev}
+      SEED_DEMO_DATA: "true"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  dbdata:
