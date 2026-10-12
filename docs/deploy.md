@@ -63,8 +63,11 @@ push (main)
    - GitHub 조직: `Hyeong0311`, 리포지토리: `ClaudeTest`, 브랜치: `main`
    - 권한 단계는 아무것도 선택하지 않고 다음
    - 이름: `github-actions-claudetest-deploy` → 생성
-2. 만든 역할 → **신뢰 관계** 탭이 [`infra/iam/github-actions-trust-policy.json`](../infra/iam/github-actions-trust-policy.json)과 같은지 확인
-   - 특히 `sub` 값이 `repo:Hyeong0311/ClaudeTest:ref:refs/heads/main` 인지 (대소문자 구분)
+2. 만든 역할 → **신뢰 관계** 탭 → **신뢰 정책 편집**에서 [`infra/iam/github-actions-trust-policy.json`](../infra/iam/github-actions-trust-policy.json) 내용으로 교체 (`<ACCOUNT_ID>`만 바꿈)
+   - **콘솔 마법사가 만든 정책은 그대로 쓰면 안 됩니다.** 2026년 7월 15일 이후 만든 GitHub 저장소는 OIDC 토큰의 `sub` 값에 소유자·저장소 **고유 ID**가 붙는 새 형식을 씁니다.
+     - 예전 형식: `repo:Hyeong0311/ClaudeTest:ref:refs/heads/main`
+     - 이 저장소(새 형식): `repo:Hyeong0311@166098778/ClaudeTest@1413916373:ref:refs/heads/main`
+   - ID 확인: `https://api.github.com/repos/<소유자>/<저장소>` 의 `owner.id`, `id`
 3. **권한 → 권한 추가 → 인라인 정책 생성 → JSON**
    - [`infra/iam/github-actions-deploy-policy.json`](../infra/iam/github-actions-deploy-policy.json) 내용을 붙여넣고 아래 값 교체
      - `<REGION>` → `ap-northeast-2`
@@ -125,7 +128,7 @@ push (main)
 
 | 실패한 단계 | 로그 메시지 | 원인 / 조치 |
 |---|---|---|
-| AWS 로그인 (OIDC) | `Not authorized to perform sts:AssumeRoleWithWebIdentity` | 신뢰 정책의 `sub`(저장소명 대소문자, 브랜치), OIDC 공급자의 대상(`sts.amazonaws.com`) 확인 |
+| AWS 로그인 (OIDC) | `Not authorized to perform sts:AssumeRoleWithWebIdentity` | 신뢰 정책의 `sub` 확인. 2026-07-15 이후 만든 저장소는 `repo:소유자@소유자ID/저장소@저장소ID:ref:refs/heads/main` 형식이어야 함. 그 외 저장소명 대소문자, 브랜치, OIDC 공급자의 대상(`sts.amazonaws.com`) 확인 |
 | AWS 로그인 (OIDC) | `No OpenIDConnect provider found` | 2단계 OIDC 공급자 누락 |
 | EC2에 배포 명령 실행 | `InvalidInstanceId` | EC2가 SSM에 등록되지 않음 → 1단계 확인, 인스턴스 재부팅 |
 | EC2에 배포 명령 실행 | `AccessDenied ... ssm:SendCommand` | 인라인 정책의 리전·계정 ID·인스턴스 ID 확인 |
