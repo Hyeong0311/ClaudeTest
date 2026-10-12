@@ -1,4 +1,4 @@
-# ClaudeTest — 방문 출입 관리 프로토타입
+# ClaudeTest — BNK 출입관리시스템 (제안용 시안)
 
 Claude Code + GitHub Actions + AWS(EC2 · ALB · Route 53) 자동 배포 실습 저장소입니다.
 `main`에 push하면 EC2에 자동 배포됩니다.
@@ -13,6 +13,13 @@ Claude Code + GitHub Actions + AWS(EC2 · ALB · Route 53) 자동 배포 실습 
 
 데이터는 모두 시연용 가상 데이터이며, 처음 실행할 때 예시 신청 6건이 자동으로 들어갑니다.
 1차 프로토타입이라 로그인·권한은 아직 없습니다.
+
+## 고객사 브랜딩
+
+- 시스템 이름·로고·상단 안내 문구: `frontend/src/brand.js`
+- 브랜드 색: `frontend/src/styles.css` 맨 위 `/* 브랜드 */` 블록 (현재 BNK금융그룹 CI 색상표 기준)
+- 이 저장소는 공개 저장소이므로 **고객사 공식 로고 파일은 넣지 않습니다.** 승인된 환경에서만 `frontend/public/brand/`에 두고 `logoSrc`를 지정합니다.
+- 모든 화면 상단에 "제안용 시안 · 공식 서비스 아님" 안내가 항상 표시됩니다.
 
 ## 구성
 

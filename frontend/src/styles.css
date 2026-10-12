@@ -1,18 +1,25 @@
 /*
-  방문 출입 관리 — 디자인 토큰
-  - 바탕은 차가운 회색, 글자는 짙은 남색 잉크
-  - 포인트 색은 방문증 목걸이에서 따온 형광 노랑 하나만 사용 (방문증 카드와 대기 건수)
+  BNK 출입관리시스템 (제안용 시안) — 디자인 토큰
+  - 브랜드 색은 BNK금융그룹 CI 색상표 기준 (BNK Red, Dark Red, Dark Gray, Light Gray)
+  - 고객사가 바뀌면 "브랜드" 블록만 바꾸면 된다
+  - 상태 색(대기·승인·방문 중·퇴실·반려)은 브랜드와 무관하게 의미 위주로 유지
   - 서체는 IBM Plex Sans KR 하나, 숫자는 항상 고정폭 숫자(tabular)
 */
 :root {
-  --ink: #17212b;
-  --ink-soft: #4a5866;
-  --ink-faint: #8a96a3;
+  /* 브랜드 */
+  --brand: #d7191f; /* BNK Red  R215 G25 B31 */
+  --brand-dark: #8b0304; /* BNK Dark Red  R139 G3 B4 */
+  --brand-ink: #ffffff; /* 브랜드 색 위의 글자 */
+  --brand-warm: #655c4f; /* BNK Dark Gray  R101 G92 B79 */
+  --brand-sand: #b7a997; /* BNK Light Gray  R183 G169 B151 */
+
+  /* 바탕과 글자 */
+  --ink: #2a2520;
+  --ink-soft: #655c4f;
+  --ink-faint: #8f857a;
   --paper: #ffffff;
-  --mist: #eef1f4;
-  --line: #d5dbe1;
-  --hivis: #f5c518;
-  --hivis-ink: #3d3100;
+  --mist: #f3f1ee;
+  --line: #ddd7cf;
   --focus: #1f5fbf;
 
   --pending-bg: #fff1c7;
@@ -21,10 +28,10 @@
   --expected-fg: #1f4e8c;
   --in-bg: #dcf1e4;
   --in-fg: #1d6b42;
-  --out-bg: #e8ecef;
-  --out-fg: #55616d;
-  --rejected-bg: #fbe4e1;
-  --rejected-fg: #a2271d;
+  --out-bg: #ebe8e4;
+  --out-fg: #655c4f;
+  --rejected-bg: #f6e1df;
+  --rejected-fg: #8b0304;
 
   font-family: 'IBM Plex Sans KR', system-ui, -apple-system, 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif;
   font-size: 15px;
@@ -94,11 +101,24 @@ a {
 }
 
 .brand-mark {
-  width: 14px;
-  height: 18px;
-  border-radius: 3px;
-  background: var(--hivis);
-  box-shadow: inset 0 0 0 2px var(--ink);
+  width: 6px;
+  height: 22px;
+  border-radius: 2px;
+  background: var(--brand);
+}
+
+.brand-logo {
+  height: 28px;
+  width: auto;
+}
+
+/* 시안 안내 띠: 모든 화면 맨 위에 항상 보임 */
+.draft-notice {
+  background: var(--ink);
+  color: #fff;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 0;
 }
 
 .nav {
@@ -116,12 +136,12 @@ a {
 
 .nav-link:hover {
   color: var(--ink);
-  background: rgba(23, 33, 43, 0.06);
+  background: rgba(42, 37, 32, 0.06);
 }
 
 .nav-link.is-active {
   color: var(--ink);
-  box-shadow: inset 0 -2px 0 var(--ink);
+  box-shadow: inset 0 -2px 0 var(--brand);
   border-radius: 0;
 }
 
@@ -171,10 +191,10 @@ a {
   justify-content: center;
   gap: 6px;
   padding: 10px 18px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--brand);
   border-radius: 8px;
-  background: var(--ink);
-  color: #fff;
+  background: var(--brand);
+  color: var(--brand-ink);
   font: inherit;
   font-weight: 600;
   text-decoration: none;
@@ -183,7 +203,8 @@ a {
 }
 
 .button:hover {
-  background: #26333f;
+  background: var(--brand-dark);
+  border-color: var(--brand-dark);
 }
 
 .button:disabled {
@@ -201,13 +222,15 @@ a {
   background: var(--mist);
 }
 
+/* 반려 확정: 승인(브랜드 빨강)과 헷갈리지 않게 어두운 색 */
 .button-danger {
-  background: var(--rejected-fg);
-  border-color: var(--rejected-fg);
+  background: var(--ink);
+  border-color: var(--ink);
 }
 
 .button-danger:hover {
-  background: #8a1f17;
+  background: #000;
+  border-color: #000;
 }
 
 .button-small {
@@ -315,8 +338,8 @@ textarea:focus {
   background: var(--paper);
   overflow: hidden;
   box-shadow:
-    0 1px 0 rgba(23, 33, 43, 0.04),
-    0 18px 40px -24px rgba(23, 33, 43, 0.45);
+    0 1px 0 rgba(42, 37, 32, 0.04),
+    0 18px 40px -24px rgba(42, 37, 32, 0.45);
 }
 
 .pass-strap {
@@ -326,8 +349,8 @@ textarea:focus {
   justify-content: space-between;
   height: 64px;
   padding: 0 20px 10px;
-  background: var(--hivis);
-  color: var(--hivis-ink);
+  background: var(--brand);
+  color: var(--brand-ink);
 }
 
 .pass-slot {
@@ -414,11 +437,12 @@ textarea:focus {
 }
 
 .pass-draft .pass-strap {
-  background: repeating-linear-gradient(-45deg, var(--hivis), var(--hivis) 10px, #f7d54f 10px, #f7d54f 20px);
+  /* 접수 전 미리보기: 빗금으로 '아직 발급 전'임을 표시 */
+  background: repeating-linear-gradient(-45deg, var(--brand), var(--brand) 10px, #e04a4f 10px, #e04a4f 20px);
 }
 
 .pass-rejected .pass-strap {
-  background: #c9ced4;
+  background: var(--brand-sand);
   color: var(--ink-soft);
 }
 
@@ -543,15 +567,15 @@ textarea:focus {
 
 .tab.is-active {
   color: var(--ink);
-  box-shadow: inset 0 -2px 0 var(--ink);
+  box-shadow: inset 0 -2px 0 var(--brand);
 }
 
 .tab-count {
   min-width: 22px;
   padding: 0 7px;
   border-radius: 999px;
-  background: var(--hivis);
-  color: var(--hivis-ink);
+  background: var(--brand);
+  color: var(--brand-ink);
   font-size: 12px;
   font-weight: 700;
   line-height: 20px;
